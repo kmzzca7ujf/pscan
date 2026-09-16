@@ -1,5 +1,5 @@
-name: '魔改构建和发布'
-description: 'pscan 魔改版构建动作（garble 混淆 + UPX 压缩，仅 Windows）'
+name: '魔改构建和发布 (Linux)'
+description: 'pscan 魔改版构建动作（garble 混淆 + UPX 压缩，仅 Linux）'
 
 inputs:
   mode:
@@ -34,46 +34,48 @@ runs:
       shell: bash
       run: go install mvdan.cc/garble@latest
 
-    - name: 安装 UPX
+    - name: 安装 UPX (Linux)
       shell: bash
-      run: choco install upx -y --no-progress
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y upx
 
     - name: 构建全量版（带混淆）
       shell: bash
       run: |
-        echo "🔨 构建全量版 pscan.exe ..."
-        garble -tiny -literals -seed=random build -ldflags="-s -w -buildid=" -trimpath -o pscan.exe .
-        echo "→ 构建完成: $(ls -lh pscan.exe | awk '{print $5}')"
+        echo "🔨 构建全量版 Linux pscan..."
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 garble -tiny -literals -seed=random build -ldflags="-s -w -buildid=" -trimpath -o pscan .
+        echo "→ 构建完成: $(ls -lh pscan | awk '{print $5}')"
 
     - name: 构建精简版（带混淆）
       shell: bash
       run: |
-        echo "🔨 构建精简版 pscan-nolocal.exe ..."
-        garble -tiny -literals -seed=random build -tags nolocal -ldflags="-s -w -buildid=" -trimpath -o pscan-nolocal.exe .
-        echo "→ 构建完成: $(ls -lh pscan-nolocal.exe | awk '{print $5}')"
+        echo "🔨 构建精简版 Linux pscan-nolocal..."
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 garble -tiny -literals -seed=random build -tags nolocal -ldflags="-s -w -buildid=" -trimpath -o pscan-nolocal .
+        echo "→ 构建完成: $(ls -lh pscan-nolocal | awk '{print $5}')"
 
     - name: UPX 压缩全量版
       shell: bash
       run: |
-        echo "📦 UPX 压缩 pscan.exe ..."
-        upx --best --force pscan.exe
-        echo "→ 压缩后: $(ls -lh pscan.exe | awk '{print $5}')"
+        echo "📦 UPX 压缩 pscan..."
+        upx --best --force pscan
+        echo "→ 压缩后: $(ls -lh pscan | awk '{print $5}')"
 
     - name: UPX 压缩精简版
       shell: bash
       run: |
-        echo "📦 UPX 压缩 pscan-nolocal.exe ..."
-        upx --best --force pscan-nolocal.exe
-        echo "→ 压缩后: $(ls -lh pscan-nolocal.exe | awk '{print $5}')"
+        echo "📦 UPX 压缩 pscan-nolocal..."
+        upx --best --force pscan-nolocal
+        echo "→ 压缩后: $(ls -lh pscan-nolocal | awk '{print $5}')"
 
     - name: 上传产物
       uses: actions/upload-artifact@v6
       if: always()
       with:
-        name: pscan-build-${{ inputs.mode }}-${{ github.run_id }}
+        name: pscan-linux-build-${{ inputs.mode }}-${{ github.run_id }}
         path: |
-          pscan.exe
-          pscan-nolocal.exe
+          pscan
+          pscan-nolocal
         retention-days: ${{ inputs.retention-days }}
 
     - name: 生成构建报告
@@ -81,7 +83,7 @@ runs:
       if: always()
       run: |
         cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-        # 魔改版构建报告
+        # 魔改版构建报告 (Linux)
 
         | 项目 | 值 |
         |------|-----|
@@ -95,6 +97,6 @@ runs:
 
         {
           echo '```'
-          ls -lh pscan.exe pscan-nolocal.exe 2>/dev/null || echo "(文件未找到)"
+          ls -lh pscan pscan-nolocal 2>/dev/null || echo "(文件未找到)"
           echo '```'
         } >> $GITHUB_STEP_SUMMARY
